@@ -146,7 +146,7 @@ export default function AdminPage() {
         </table>
       </section>
       <section style={{ marginTop: '2rem', fontSize: '0.7rem', color: '#999' }}>
-        v1.3 Fix
+        v1.4 URL Fix
       </section>
     </div>
   )
