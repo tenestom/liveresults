@@ -45,8 +45,10 @@ export default function AdminPage() {
     const { error } = await supabase.from('athletes').insert([
       { name, club, class: athleteClass, discipline, result_1: {}, result_2: {} }
     ])
-    if (error) alert('Error adding athlete')
-    else {
+    if (error) {
+      console.error(error)
+      alert('Error adding athlete: ' + error.message)
+    } else {
       setName('')
       setClub('')
       setAthleteClass('')
@@ -142,6 +144,9 @@ export default function AdminPage() {
             ))}
           </tbody>
         </table>
+      </section>
+      <section style={{ marginTop: '2rem', fontSize: '0.7rem', color: '#999' }}>
+        v1.3 Fix
       </section>
     </div>
   )
