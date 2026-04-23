@@ -43,8 +43,13 @@ export const getBestResult = (discipline: Discipline, r1: any, r2: any): any => 
 
 export const sortAthletes = (athletes: Athlete[]): Athlete[] => {
   return [...athletes].sort((a, b) => {
+    // Sort by Class first
     if (a.class !== b.class) return a.class.localeCompare(b.class);
     
+    // Then by Discipline
+    if (a.discipline !== b.discipline) return a.discipline.localeCompare(b.discipline);
+
+    // Then by Best Result
     const bestA = getBestResult(a.discipline, a.result_1, a.result_2);
     const bestB = getBestResult(b.discipline, b.result_1, b.result_2);
 
