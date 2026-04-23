@@ -1,5 +1,4 @@
-'use client'
-
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { sortAthletes, getBestResult, SlalomResult } from '@/lib/sorting'
@@ -49,6 +48,9 @@ export default function PublicPage() {
 
   return (
     <div>
+      <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
+        <Link href="/admin" style={{ fontSize: '0.9rem', color: '#004a99', textDecoration: 'none', border: '1px solid #004a99', padding: '4px 8px', borderRadius: '4px' }}>Admin / Editor</Link>
+      </div>
       {classes.map(cls => (
         <div key={cls}>
           <h2>Class {cls}</h2>
