@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Discipline, SlalomResult } from '@/lib/sorting'
@@ -83,6 +84,9 @@ export default function AdminPage() {
   if (!isLoggedIn) {
     return (
       <div className="login-container">
+        <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
+          <Link href="/" style={{ fontSize: '0.9rem', color: '#004a99', textDecoration: 'none', border: '1px solid #004a99', padding: '4px 8px', borderRadius: '4px' }}>Back to Leaderboard</Link>
+        </div>
         <h1>Admin Login</h1>
         <form onSubmit={handleLogin}>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" />
@@ -94,6 +98,9 @@ export default function AdminPage() {
 
   return (
     <div>
+      <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
+        <Link href="/" style={{ fontSize: '0.9rem', color: '#004a99', textDecoration: 'none', border: '1px solid #004a99', padding: '4px 8px', borderRadius: '4px' }}>Back to Leaderboard</Link>
+      </div>
       <h1>Admin Dashboard</h1>
       
       <section>
