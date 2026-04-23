@@ -12,10 +12,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   if (typeof window !== 'undefined') {
     console.error('Supabase credentials missing! Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
   }
-} else {
-  if (typeof window !== 'undefined') {
-     console.log('Supabase Initialized with URL:', supabaseUrl.substring(0, 15) + '...');
-  }
 }
 
 export const supabase = (supabaseUrl && supabaseAnonKey) 

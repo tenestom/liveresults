@@ -145,9 +145,6 @@ export default function AdminPage() {
           </tbody>
         </table>
       </section>
-      <section style={{ marginTop: '2rem', fontSize: '0.7rem', color: '#999' }}>
-        v1.5 Aggressive Fix
-      </section>
     </div>
   )
 }
