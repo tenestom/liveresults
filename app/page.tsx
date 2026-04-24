@@ -48,8 +48,11 @@ export default function PublicPage() {
     }
     
     if (res?.status) {
-      const statusStr = res.status === 'on water' ? 'on water' : 'confirmed'
-      return resultStr ? `${resultStr} - ${statusStr}` : statusStr
+      const isConfirmed = res.status === 'confirmed'
+      const label = isConfirmed ? 'Confirmed' : 'On water'
+      const color = isConfirmed ? '#28a745' : '#004a99'
+      const statusSpan = <span style={{ color, fontWeight: 'bold' }}>{label}</span>
+      return resultStr ? <span>{resultStr} - {statusSpan}</span> : statusSpan
     }
     return resultStr
   }
@@ -97,7 +100,7 @@ export default function PublicPage() {
         </div>
       ))}
       <div style={{ marginTop: '2rem', fontSize: '0.8rem', color: '#666', textAlign: 'center' }}>
-        Update 1.8
+        Update 1.9
       </div>
     </div>
   )
