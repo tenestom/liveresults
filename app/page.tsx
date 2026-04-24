@@ -35,10 +35,13 @@ export default function PublicPage() {
   }
 
   const formatResult = (discipline: string, res: any) => {
-    if (!res || JSON.stringify(res) === '{}') return '-'
+    if (!res || JSON.stringify(res) === '{}') return ''
     if (discipline === 'slalom') {
       const s = res as SlalomResult
-      return `${s.speed}km/${s.line}m/${s.buoys}`
+      if (s.speed == null || s.line == null || s.buoys == null || s.speed === '' || s.line === '' || s.buoys === '') {
+        return ''
+      }
+      return `${s.buoys}/${s.line}m/${s.speed}km`
     }
     return `${res.value}`
   }
