@@ -35,15 +35,23 @@ export default function PublicPage() {
   }
 
   const formatResult = (discipline: string, res: any) => {
-    if (!res || JSON.stringify(res) === '{}') return ''
-    if (discipline === 'slalom') {
-      const s = res as SlalomResult
-      if (!s.speed || !s.line || s.buoys == null) {
-        return ''
+    let resultStr = ''
+    if (res && JSON.stringify(res) !== '{}') {
+      if (discipline === 'slalom') {
+        const s = res as SlalomResult
+        if (s.speed && s.line && s.buoys != null) {
+          resultStr = `${s.buoys}/${s.line}/${s.speed}`
+        }
+      } else if (res.value != null) {
+        resultStr = `${res.value}`
       }
-      return `${s.buoys}/${s.line}/${s.speed}`
     }
-    return res.value != null ? `${res.value}` : ''
+    
+    if (res?.status) {
+      const statusStr = res.status === 'on water' ? 'on water' : 'confirmed'
+      return resultStr ? `${resultStr} - ${statusStr}` : statusStr
+    }
+    return resultStr
   }
 
   if (loading) return <p>Loading results...</p>
@@ -89,7 +97,7 @@ export default function PublicPage() {
         </div>
       ))}
       <div style={{ marginTop: '2rem', fontSize: '0.8rem', color: '#666', textAlign: 'center' }}>
-        Update 1.7
+        Update 1.8
       </div>
     </div>
   )

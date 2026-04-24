@@ -64,20 +64,37 @@ export default function AdminPage() {
     else fetchAthletes()
   }
 
+  const toggleStatus = (id: string, round: number, currentRes: any, newStatus: string) => {
+    const status = currentRes.status === newStatus ? null : newStatus
+    updateResult(id, round, 'slalom' as Discipline, { ...currentRes, status })
+  }
+
   const renderResultInput = (athlete: any, round: number) => {
     const res = round === 1 ? athlete.result_1 : athlete.result_2
-    if (athlete.discipline === 'slalom') {
-      const s = res as SlalomResult
-      return (
-        <div style={{ display: 'flex' }}>
-          <input className="result-input" placeholder="Sp" defaultValue={s.speed} onBlur={(e) => updateResult(athlete.id, round, 'slalom', { ...s, speed: Number(e.target.value) })} />
-          <input className="result-input" placeholder="Li" defaultValue={s.line} onBlur={(e) => updateResult(athlete.id, round, 'slalom', { ...s, line: Number(e.target.value) })} />
-          <input className="result-input" placeholder="Bu" defaultValue={s.buoys} onBlur={(e) => updateResult(athlete.id, round, 'slalom', { ...s, buoys: Number(e.target.value) })} />
-        </div>
-      )
-    }
+    const isSlalom = athlete.discipline === 'slalom'
+    
     return (
-      <input className="result-input" type="number" placeholder="Val" defaultValue={res.value} onBlur={(e) => updateResult(athlete.id, round, athlete.discipline, { value: Number(e.target.value) })} />
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        {isSlalom ? (
+          <div style={{ display: 'flex' }}>
+            <input className="result-input" placeholder="Sp" defaultValue={res.speed} onBlur={(e) => updateResult(athlete.id, round, 'slalom', { ...res, speed: Number(e.target.value) })} />
+            <input className="result-input" placeholder="Li" defaultValue={res.line} onBlur={(e) => updateResult(athlete.id, round, 'slalom', { ...res, line: Number(e.target.value) })} />
+            <input className="result-input" placeholder="Bu" defaultValue={res.buoys} onBlur={(e) => updateResult(athlete.id, round, 'slalom', { ...res, buoys: Number(e.target.value) })} />
+          </div>
+        ) : (
+          <input className="result-input" type="number" placeholder="Val" defaultValue={res.value} onBlur={(e) => updateResult(athlete.id, round, athlete.discipline, { ...res, value: Number(e.target.value) })} />
+        )}
+        <button 
+          onClick={() => toggleStatus(athlete.id, round, res, 'on water')}
+          style={{ backgroundColor: res.status === 'on water' ? '#004a99' : '#ccc', color: 'white', border: 'none', padding: '4px 8px', marginLeft: '5px', borderRadius: '4px', cursor: 'pointer' }}
+          title="On Water"
+        >W</button>
+        <button 
+          onClick={() => toggleStatus(athlete.id, round, res, 'confirmed')}
+          style={{ backgroundColor: res.status === 'confirmed' ? '#28a745' : '#ccc', color: 'white', border: 'none', padding: '4px 8px', marginLeft: '5px', borderRadius: '4px', cursor: 'pointer' }}
+          title="Confirmed"
+        >C</button>
+      </div>
     )
   }
 
