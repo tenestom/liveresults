@@ -34,7 +34,7 @@ export default function PublicPage() {
     setLoading(false)
   }
 
-  const formatResult = (discipline: string, res: any) => {
+  const formatResult = (discipline: string, res: any, showStatus: boolean = true) => {
     let resultStr = ''
     if (res && JSON.stringify(res) !== '{}') {
       if (discipline === 'slalom') {
@@ -47,7 +47,7 @@ export default function PublicPage() {
       }
     }
     
-    if (res?.status) {
+    if (showStatus && res?.status) {
       const isConfirmed = res.status === 'confirmed'
       const label = isConfirmed ? 'Confirmed' : 'On water'
       const color = isConfirmed ? '#28a745' : '#004a99'
@@ -91,7 +91,7 @@ export default function PublicPage() {
                     <td>{athlete.discipline.toUpperCase()}</td>
                     <td>{formatResult(athlete.discipline, athlete.result_1)}</td>
                     <td>{formatResult(athlete.discipline, athlete.result_2)}</td>
-                    <td><strong>{formatResult(athlete.discipline, best)}</strong></td>
+                    <td><strong>{formatResult(athlete.discipline, best, false)}</strong></td>
                   </tr>
                 )
               })}
@@ -100,7 +100,7 @@ export default function PublicPage() {
         </div>
       ))}
       <div style={{ marginTop: '2rem', fontSize: '0.8rem', color: '#666', textAlign: 'center' }}>
-        Update 1.9
+        Update 2.0
       </div>
     </div>
   )
