@@ -43,7 +43,7 @@ export default function PublicPage() {
       }
       return `${s.buoys}/${s.line}m/${s.speed}km`
     }
-    return `${res.value}`
+    return res.value != null ? `${res.value}` : ''
   }
 
   if (loading) return <p>Loading results...</p>
@@ -88,6 +88,9 @@ export default function PublicPage() {
           </table>
         </div>
       ))}
+      <div style={{ marginTop: '2rem', fontSize: '0.8rem', color: '#666', textAlign: 'center' }}>
+        Update 1.6
+      </div>
     </div>
   )
 }
