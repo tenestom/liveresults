@@ -41,7 +41,7 @@ export default function PublicPage() {
       if (!s.speed || !s.line || s.buoys == null) {
         return ''
       }
-      return `${s.buoys}/${s.line}m/${s.speed}km`
+      return `${s.buoys}/${s.line}/${s.speed}`
     }
     return res.value != null ? `${res.value}` : ''
   }
@@ -89,7 +89,7 @@ export default function PublicPage() {
         </div>
       ))}
       <div style={{ marginTop: '2rem', fontSize: '0.8rem', color: '#666', textAlign: 'center' }}>
-        Update 1.6
+        Update 1.7
       </div>
     </div>
   )
