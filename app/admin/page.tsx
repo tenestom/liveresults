@@ -202,44 +202,47 @@ export default function AdminPage() {
             return idxA - idxB
           })
 
-          return sortedClasses.map((cls: any) => (
-            <div key={cls} style={{ marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', background: '#f4f4f4', padding: '10px', borderRadius: '4px' }}>
-                <button type="button" onClick={() => moveClass(cls, 'up')} style={{ marginRight: '5px' }}>↑</button>
-                <button type="button" onClick={() => moveClass(cls, 'down')} style={{ marginRight: '15px' }}>↓</button>
-                <h3 style={{ margin: 0 }}>Class: {cls}</h3>
-              </div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Club</th>
-                    <th>Discipline</th>
-                    <th>Round 1</th>
-                    <th>Round 2</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {athletes.filter((a: any) => a.class === cls).map((a: any) => (
-                    <tr key={a.id}>
-                      <td>{a.name}</td>
-                      <td>{a.club}</td>
-                      <td>{a.discipline.toUpperCase()}</td>
-                      <td>{renderResultInput(a, 1)}</td>
-                      <td>{renderResultInput(a, 2)}</td>
-                      <td>
-                        <button onClick={async () => {
-                          if (confirm('Delete?')) {
-                            await supabase.from('athletes').delete().eq('id', a.id)
-                            fetchAthletes()
-                          }
-                        }}>Delete</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          return [1, 2].map(round => (
+            <div key={round} style={{ marginBottom: '4rem' }}>
+              <h2 style={{ background: '#004a99', color: '#fff', padding: '10px', borderRadius: '4px' }}>ROUND {round}</h2>
+              {sortedClasses.map((cls: any) => (
+                <div key={`${round}-${cls}`} style={{ marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', background: '#f4f4f4', padding: '10px', borderRadius: '4px' }}>
+                    <button type="button" onClick={() => moveClass(cls, 'up')} style={{ marginRight: '5px' }}>↑</button>
+                    <button type="button" onClick={() => moveClass(cls, 'down')} style={{ marginRight: '15px' }}>↓</button>
+                    <h3 style={{ margin: 0 }}>Class: {cls}</h3>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Club</th>
+                        <th>Discipline</th>
+                        <th>Result (Round {round})</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {athletes.filter((a: any) => a.class === cls).map((a: any) => (
+                        <tr key={a.id}>
+                          <td>{a.name}</td>
+                          <td>{a.club}</td>
+                          <td>{a.discipline.toUpperCase()}</td>
+                          <td>{renderResultInput(a, round)}</td>
+                          <td>
+                            <button onClick={async () => {
+                              if (confirm('Delete?')) {
+                                await supabase.from('athletes').delete().eq('id', a.id)
+                                fetchAthletes()
+                              }
+                            }}>Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
             </div>
           ))
         })()}

@@ -82,40 +82,44 @@ export default function PublicPage() {
       <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
         <Link href="/admin" style={{ fontSize: '0.9rem', color: '#004a99', textDecoration: 'none', border: '1px solid #004a99', padding: '4px 8px', borderRadius: '4px' }}>Admin / Editor</Link>
       </div>
-      {classes.map(cls => (
-        <div key={cls}>
-          <h2>Class {cls}</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Club</th>
-                <th>Discipline</th>
-                <th>Round 1</th>
-                <th>Round 2</th>
-                <th>Best</th>
-              </tr>
-            </thead>
-            <tbody>
-              {athletes.filter((a: any) => a.class === cls).map((athlete: any) => {
-                const best = getBestResult(athlete.discipline, athlete.result_1, athlete.result_2)
-                return (
-                  <tr key={athlete.id}>
-                    <td>{athlete.name}</td>
-                    <td>{athlete.club}</td>
-                    <td>{athlete.discipline.toUpperCase()}</td>
-                    <td>{formatResult(athlete.discipline, athlete.result_1)}</td>
-                    <td>{formatResult(athlete.discipline, athlete.result_2)}</td>
-                    <td><strong>{formatResult(athlete.discipline, best, false)}</strong></td>
+      {[1, 2].map(round => (
+        <div key={round} style={{ marginBottom: '4rem' }}>
+          <h2 style={{ background: '#004a99', color: '#fff', padding: '10px', borderRadius: '4px' }}>ROUND {round}</h2>
+          {classes.map(cls => (
+            <div key={`${round}-${cls}`}>
+              <h3 style={{ padding: '0 1rem' }}>Class {cls}</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Club</th>
+                    <th>Discipline</th>
+                    <th>Result (Round {round})</th>
+                    <th>Best</th>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  {athletes.filter((a: any) => a.class === cls).map((athlete: any) => {
+                    const res = round === 1 ? athlete.result_1 : athlete.result_2
+                    const best = getBestResult(athlete.discipline, athlete.result_1, athlete.result_2)
+                    return (
+                      <tr key={`${round}-${athlete.id}`}>
+                        <td>{athlete.name}</td>
+                        <td>{athlete.club}</td>
+                        <td>{athlete.discipline.toUpperCase()}</td>
+                        <td>{formatResult(athlete.discipline, res)}</td>
+                        <td><strong>{formatResult(athlete.discipline, best, false)}</strong></td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </div>
       ))}
       <div style={{ marginTop: '2rem', fontSize: '0.8rem', color: '#666', textAlign: 'center' }}>
-        Update 2.1
+        Update 2.2
       </div>
     </div>
   )
