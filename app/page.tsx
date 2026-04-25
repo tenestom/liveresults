@@ -8,6 +8,7 @@ import { sortAthletes, getBestResult, SlalomResult } from '@/lib/sorting'
 export default function PublicPage() {
   const [athletes, setAthletes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [classOrder, setClassOrder] = useState<string[]>([])
 
   useEffect(() => {
     fetchAthletes()
@@ -29,7 +30,12 @@ export default function PublicPage() {
     if (error) {
       console.error('Error fetching data:', error)
     } else {
-      setAthletes(sortAthletes(data))
+      const meta = data?.find(a => a.name === '_metadata_')
+      const actualAthletes = data?.filter(a => a.name !== '_metadata_') || []
+      setAthletes(sortAthletes(actualAthletes))
+      if (meta && meta.result_1?.classOrder) {
+        setClassOrder(meta.result_1.classOrder)
+      }
     }
     setLoading(false)
   }
@@ -60,7 +66,16 @@ export default function PublicPage() {
   if (loading) return <p>Loading results...</p>
 
   // Group by Class
-  const classes = Array.from(new Set(athletes.map(a => a.class))).sort()
+  // Group by Class
+  const distinctClasses = Array.from(new Set(athletes.map(a => a.class)))
+  const classes = [...distinctClasses].sort((a, b) => {
+    const idxA = classOrder.indexOf(a)
+    const idxB = classOrder.indexOf(b)
+    if (idxA === -1 && idxB === -1) return a.localeCompare(b)
+    if (idxA === -1) return 1
+    if (idxB === -1) return -1
+    return idxA - idxB
+  })
 
   return (
     <div>
@@ -100,7 +115,7 @@ export default function PublicPage() {
         </div>
       ))}
       <div style={{ marginTop: '2rem', fontSize: '0.8rem', color: '#666', textAlign: 'center' }}>
-        Update 2.0
+        Update 2.1
       </div>
     </div>
   )

@@ -12,6 +12,7 @@ export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [athletes, setAthletes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [classOrder, setClassOrder] = useState<string[]>([])
 
   // Form State
   const [name, setName] = useState('')
@@ -28,8 +29,43 @@ export default function AdminPage() {
   async function fetchAthletes() {
     const { data, error } = await supabase.from('athletes').select('*').order('name')
     if (error) console.error(error)
-    else setAthletes(data || [])
+    else {
+      const meta = data?.find(a => a.name === '_metadata_')
+      const actualAthletes = data?.filter(a => a.name !== '_metadata_') || []
+      setAthletes(actualAthletes)
+      if (meta && meta.result_1?.classOrder) {
+        setClassOrder(meta.result_1.classOrder)
+      }
+    }
     setLoading(false)
+  }
+
+  async function moveClass(cls: string, direction: 'up' | 'down') {
+    const currentClasses = Array.from(new Set(athletes.map(a => a.class)))
+    const fullOrder = [...classOrder]
+    // Ensure all current classes are in the order list
+    currentClasses.forEach(c => { if (!fullOrder.includes(c)) fullOrder.push(c) })
+    
+    const index = fullOrder.indexOf(cls)
+    if (index === -1) return
+
+    const newOrder = [...fullOrder]
+    if (direction === 'up' && index > 0) {
+      [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]]
+    } else if (direction === 'down' && index < newOrder.length - 1) {
+      [newOrder[index + 1], newOrder[index]] = [newOrder[index], newOrder[index + 1]]
+    } else {
+      return
+    }
+
+    setClassOrder(newOrder)
+    await supabase.from('athletes').upsert({
+      id: '00000000-0000-0000-0000-000000000000',
+      name: '_metadata_',
+      class: '_metadata_',
+      discipline: 'slalom',
+      result_1: { classOrder: newOrder }
+    })
   }
 
   const handleLogin = (e: React.FormEvent) => {
@@ -137,37 +173,58 @@ export default function AdminPage() {
 
       <section>
         <h2>Results Management</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Class</th>
-              <th>Discipline</th>
-              <th>Round 1</th>
-              <th>Round 2</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {athletes.map(a => (
-              <tr key={a.id}>
-                <td>{a.name}</td>
-                <td>{a.class}</td>
-                <td>{a.discipline.toUpperCase()}</td>
-                <td>{renderResultInput(a, 1)}</td>
-                <td>{renderResultInput(a, 2)}</td>
-                <td>
-                  <button onClick={async () => {
-                    if (confirm('Delete?')) {
-                      await supabase.from('athletes').delete().eq('id', a.id)
-                      fetchAthletes()
-                    }
-                  }}>Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {(() => {
+          const distinctClasses = Array.from(new Set(athletes.map(a => a.class)))
+          const sortedClasses = [...distinctClasses].sort((a, b) => {
+            const idxA = classOrder.indexOf(a)
+            const idxB = classOrder.indexOf(b)
+            if (idxA === -1 && idxB === -1) return a.localeCompare(b)
+            if (idxA === -1) return 1
+            if (idxB === -1) return -1
+            return idxA - idxB
+          })
+
+          return sortedClasses.map(cls => (
+            <div key={cls} style={{ marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', background: '#f4f4f4', padding: '10px', borderRadius: '4px' }}>
+                <button onClick={() => moveClass(cls, 'up')} style={{ marginRight: '5px' }}>↑</button>
+                <button onClick={() => moveClass(cls, 'down')} style={{ marginRight: '15px' }}>↓</button>
+                <h3 style={{ margin: 0 }}>Class: {cls}</h3>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Club</th>
+                    <th>Discipline</th>
+                    <th>Round 1</th>
+                    <th>Round 2</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {athletes.filter(a => a.class === cls).map(a => (
+                    <tr key={a.id}>
+                      <td>{a.name}</td>
+                      <td>{a.club}</td>
+                      <td>{a.discipline.toUpperCase()}</td>
+                      <td>{renderResultInput(a, 1)}</td>
+                      <td>{renderResultInput(a, 2)}</td>
+                      <td>
+                        <button onClick={async () => {
+                          if (confirm('Delete?')) {
+                            await supabase.from('athletes').delete().eq('id', a.id)
+                            fetchAthletes()
+                          }
+                        }}>Delete</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))
+        })()}
       </section>
     </div>
   )
