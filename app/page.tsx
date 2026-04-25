@@ -30,8 +30,8 @@ export default function PublicPage() {
     if (error) {
       console.error('Error fetching data:', error)
     } else {
-      const meta = data?.find(a => a.name === '_metadata_')
-      const actualAthletes = data?.filter(a => a.name !== '_metadata_') || []
+      const meta = data?.find((a: any) => a.name === '_metadata_')
+      const actualAthletes = data?.filter((a: any) => a.name !== '_metadata_') || []
       setAthletes(sortAthletes(actualAthletes))
       if (meta && meta.result_1?.classOrder) {
         setClassOrder(meta.result_1.classOrder)
@@ -67,8 +67,8 @@ export default function PublicPage() {
 
   // Group by Class
   // Group by Class
-  const distinctClasses = Array.from(new Set(athletes.map(a => a.class)))
-  const classes = [...distinctClasses].sort((a, b) => {
+  const distinctClasses = Array.from(new Set(athletes.map((a: any) => a.class)))
+  const classes = [...distinctClasses].sort((a: any, b: any) => {
     const idxA = classOrder.indexOf(a)
     const idxB = classOrder.indexOf(b)
     if (idxA === -1 && idxB === -1) return a.localeCompare(b)
@@ -97,7 +97,7 @@ export default function PublicPage() {
               </tr>
             </thead>
             <tbody>
-              {athletes.filter(a => a.class === cls).map(athlete => {
+              {athletes.filter((a: any) => a.class === cls).map((athlete: any) => {
                 const best = getBestResult(athlete.discipline, athlete.result_1, athlete.result_2)
                 return (
                   <tr key={athlete.id}>

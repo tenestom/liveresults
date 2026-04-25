@@ -30,8 +30,8 @@ export default function AdminPage() {
     const { data, error } = await supabase.from('athletes').select('*').order('name')
     if (error) console.error(error)
     else {
-      const meta = data?.find(a => a.name === '_metadata_')
-      const actualAthletes = data?.filter(a => a.name !== '_metadata_') || []
+      const meta = data?.find((a: any) => a.name === '_metadata_')
+      const actualAthletes = data?.filter((a: any) => a.name !== '_metadata_') || []
       setAthletes(actualAthletes)
       if (meta && meta.result_1?.classOrder) {
         setClassOrder(meta.result_1.classOrder)
@@ -41,7 +41,7 @@ export default function AdminPage() {
   }
 
   async function moveClass(cls: string, direction: 'up' | 'down') {
-    const currentClasses = Array.from(new Set(athletes.map(a => a.class)))
+    const currentClasses = Array.from(new Set(athletes.map((a: any) => a.class)))
     const fullOrder = [...classOrder]
     // Ensure all current classes are in the order list
     currentClasses.forEach(c => { if (!fullOrder.includes(c)) fullOrder.push(c) })
@@ -174,8 +174,8 @@ export default function AdminPage() {
       <section>
         <h2>Results Management</h2>
         {(() => {
-          const distinctClasses = Array.from(new Set(athletes.map(a => a.class)))
-          const sortedClasses = [...distinctClasses].sort((a, b) => {
+          const distinctClasses = Array.from(new Set(athletes.map((a: any) => a.class)))
+          const sortedClasses = [...distinctClasses].sort((a: any, b: any) => {
             const idxA = classOrder.indexOf(a)
             const idxB = classOrder.indexOf(b)
             if (idxA === -1 && idxB === -1) return a.localeCompare(b)
@@ -184,7 +184,7 @@ export default function AdminPage() {
             return idxA - idxB
           })
 
-          return sortedClasses.map(cls => (
+          return sortedClasses.map((cls: any) => (
             <div key={cls} style={{ marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', background: '#f4f4f4', padding: '10px', borderRadius: '4px' }}>
                 <button onClick={() => moveClass(cls, 'up')} style={{ marginRight: '5px' }}>↑</button>
@@ -203,7 +203,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {athletes.filter(a => a.class === cls).map(a => (
+                  {athletes.filter((a: any) => a.class === cls).map((a: any) => (
                     <tr key={a.id}>
                       <td>{a.name}</td>
                       <td>{a.club}</td>
