@@ -41,6 +41,7 @@ export default function AdminPage() {
   }
 
   async function moveClass(cls: string, direction: 'up' | 'down') {
+    alert('Moving ' + cls + ' ' + direction)
     try {
       const currentClasses = Array.from(new Set(athletes.map((a: any) => a.class)))
       let fullOrder = [...classOrder]
@@ -51,7 +52,11 @@ export default function AdminPage() {
       })
       
       const index = fullOrder.indexOf(cls)
-      if (index === -1) return
+      console.log('Index of', cls, 'is', index, 'in', fullOrder)
+      if (index === -1) {
+        alert('Class not found in list')
+        return
+      }
 
       const newOrder = [...fullOrder]
       if (direction === 'up' && index > 0) {
@@ -59,14 +64,16 @@ export default function AdminPage() {
       } else if (direction === 'down' && index < newOrder.length - 1) {
         [newOrder[index + 1], newOrder[index]] = [newOrder[index], newOrder[index + 1]]
       } else {
+        alert('Cannot move further ' + direction)
         return // Already at the top/bottom
       }
 
+      alert('New order: ' + newOrder.join(', '))
       // Update local state immediately for snappy UI
       setClassOrder(newOrder)
 
       const { error } = await supabase.from('athletes').upsert({
-        id: '00000000-0000-0000-0000-000000000001', // Use a consistent non-nil UUID
+        id: '12345678-1234-1234-1234-1234567890ab', // Use a strictly valid UUID
         name: '_metadata_',
         class: '_metadata_',
         discipline: 'slalom',
@@ -204,8 +211,8 @@ export default function AdminPage() {
           return sortedClasses.map((cls: any) => (
             <div key={cls} style={{ marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', background: '#f4f4f4', padding: '10px', borderRadius: '4px' }}>
-                <button onClick={() => moveClass(cls, 'up')} style={{ marginRight: '5px' }}>↑</button>
-                <button onClick={() => moveClass(cls, 'down')} style={{ marginRight: '15px' }}>↓</button>
+                <button type="button" onClick={() => moveClass(cls, 'up')} style={{ marginRight: '5px' }}>↑</button>
+                <button type="button" onClick={() => moveClass(cls, 'down')} style={{ marginRight: '15px' }}>↓</button>
                 <h3 style={{ margin: 0 }}>Class: {cls}</h3>
               </div>
               <table>
