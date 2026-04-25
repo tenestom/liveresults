@@ -41,39 +41,34 @@ export default function AdminPage() {
   }
 
   async function moveClass(cls: string, direction: 'up' | 'down') {
-    alert('Moving ' + cls + ' ' + direction)
     try {
-      const currentClasses = Array.from(new Set(athletes.map((a: any) => a.class)))
-      let fullOrder = [...classOrder]
-      
-      // Ensure all current classes are represented in the order
-      currentClasses.forEach(c => {
-        if (!fullOrder.includes(c)) fullOrder.push(c)
+      const distinctClasses = Array.from(new Set(athletes.map((a: any) => a.class)))
+      const currentSortedClasses = [...distinctClasses].sort((a: any, b: any) => {
+        const idxA = classOrder.indexOf(a)
+        const idxB = classOrder.indexOf(b)
+        if (idxA === -1 && idxB === -1) return a.localeCompare(b)
+        if (idxA === -1) return 1
+        if (idxB === -1) return -1
+        return idxA - idxB
       })
       
-      const index = fullOrder.indexOf(cls)
-      console.log('Index of', cls, 'is', index, 'in', fullOrder)
-      if (index === -1) {
-        alert('Class not found in list')
-        return
-      }
+      const index = currentSortedClasses.indexOf(cls)
+      if (index === -1) return
 
-      const newOrder = [...fullOrder]
+      const newOrder = [...currentSortedClasses]
       if (direction === 'up' && index > 0) {
         [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]]
       } else if (direction === 'down' && index < newOrder.length - 1) {
         [newOrder[index + 1], newOrder[index]] = [newOrder[index], newOrder[index + 1]]
       } else {
-        alert('Cannot move further ' + direction)
         return // Already at the top/bottom
       }
 
-      alert('New order: ' + newOrder.join(', '))
       // Update local state immediately for snappy UI
       setClassOrder(newOrder)
 
       const { error } = await supabase.from('athletes').upsert({
-        id: '12345678-1234-1234-1234-1234567890ab', // Use a strictly valid UUID
+        id: '12345678-1234-1234-1234-1234567890ab',
         name: '_metadata_',
         class: '_metadata_',
         discipline: 'slalom',
@@ -81,14 +76,13 @@ export default function AdminPage() {
       })
 
       if (error) {
-        alert('Error saving new class order: ' + error.message)
+        console.error('Error saving new class order:', error.message)
         fetchAthletes() // Revert to server state
       } else {
         fetchAthletes() // Final sync
       }
     } catch (err) {
       console.error(err)
-      alert('An unexpected error occurred while moving class')
     }
   }
 
