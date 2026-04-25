@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { sortAthletes, getBestResult, SlalomResult } from '@/lib/sorting'
+import { sortAthletes, getBestResult, SlalomResult, compareSlalom } from '@/lib/sorting'
 
 export default function PublicPage() {
   const [athletes, setAthletes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [classOrderR1, setClassOrderR1] = useState<string[]>([])
   const [classOrderR2, setClassOrderR2] = useState<string[]>([])
+  const [round2Active, setRound2Active] = useState(false)
 
   useEffect(() => {
     fetchAthletes()
@@ -33,10 +34,11 @@ export default function PublicPage() {
     } else {
       const meta = data?.find((a: any) => a.name === '_metadata_')
       const actualAthletes = data?.filter((a: any) => a.name !== '_metadata_') || []
-      setAthletes(sortAthletes(actualAthletes))
+      setAthletes(actualAthletes) // We will sort inside the render loop for round 2
       if (meta && meta.result_1) {
         if (meta.result_1.classOrderR1) setClassOrderR1(meta.result_1.classOrderR1)
         if (meta.result_1.classOrderR2) setClassOrderR2(meta.result_1.classOrderR2)
+        if (meta.result_1.round2Active !== undefined) setRound2Active(meta.result_1.round2Active)
         // Compatibility for old metadata
         if (meta.result_1.classOrder && !meta.result_1.classOrderR1) {
           setClassOrderR1(meta.result_1.classOrder)
@@ -80,6 +82,8 @@ export default function PublicPage() {
         <Link href="/admin" style={{ fontSize: '0.9rem', color: '#004a99', textDecoration: 'none', border: '1px solid #004a99', padding: '4px 8px', borderRadius: '4px' }}>Admin / Editor</Link>
       </div>
       {[1, 2].map(round => {
+        if (round === 2 && !round2Active) return null
+
         const currentOrder = round === 1 ? classOrderR1 : classOrderR2
         const sortedClassesForRound = [...distinctClasses].sort((a: any, b: any) => {
           const idxA = currentOrder.indexOf(a)
@@ -107,19 +111,32 @@ export default function PublicPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {athletes.filter((a: any) => a.class === cls).map((athlete: any) => {
-                      const res = round === 1 ? athlete.result_1 : athlete.result_2
-                      const best = getBestResult(athlete.discipline, athlete.result_1, athlete.result_2)
-                      return (
-                        <tr key={`${round}-${athlete.id}`}>
-                          <td>{athlete.name}</td>
-                          <td>{athlete.club}</td>
-                          <td>{athlete.discipline.toUpperCase()}</td>
-                          <td>{formatResult(athlete.discipline, res)}</td>
-                          <td><strong>{formatResult(athlete.discipline, best, false)}</strong></td>
-                        </tr>
-                      )
-                    })}
+                    {athletes
+                      .filter((a: any) => a.class === cls)
+                      .sort((a: any, b: any) => {
+                        if (round === 1) return 0 // Keep original order for round 1
+                        // Round 2: sort by round 1 result (best last)
+                        if (a.discipline !== b.discipline) return a.discipline.localeCompare(b.discipline)
+                        if (a.discipline === 'slalom') {
+                          return compareSlalom(b.result_1, a.result_1) // Reversed: best last
+                        }
+                        const valA = Number(a.result_1?.value || 0)
+                        const valB = Number(b.result_1?.value || 0)
+                        return valA - valB // Higher is better -> best last
+                      })
+                      .map((athlete: any) => {
+                        const res = round === 1 ? athlete.result_1 : athlete.result_2
+                        const best = getBestResult(athlete.discipline, athlete.result_1, athlete.result_2)
+                        return (
+                          <tr key={`${round}-${athlete.id}`}>
+                            <td>{athlete.name}</td>
+                            <td>{athlete.club}</td>
+                            <td>{athlete.discipline.toUpperCase()}</td>
+                            <td>{formatResult(athlete.discipline, res)}</td>
+                            <td><strong>{formatResult(athlete.discipline, best, false)}</strong></td>
+                          </tr>
+                        )
+                      })}
                   </tbody>
                 </table>
               </div>
@@ -128,7 +145,7 @@ export default function PublicPage() {
         )
       })}
       <div style={{ marginTop: '2rem', fontSize: '0.8rem', color: '#666', textAlign: 'center' }}>
-        Update 2.3
+        Update 2.4
       </div>
     </div>
   )

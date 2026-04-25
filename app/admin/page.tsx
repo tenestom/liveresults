@@ -14,6 +14,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [classOrderR1, setClassOrderR1] = useState<string[]>([])
   const [classOrderR2, setClassOrderR2] = useState<string[]>([])
+  const [round2Active, setRound2Active] = useState(false)
 
   // Form State
   const [name, setName] = useState('')
@@ -37,6 +38,7 @@ export default function AdminPage() {
       if (meta && meta.result_1) {
         if (meta.result_1.classOrderR1) setClassOrderR1(meta.result_1.classOrderR1)
         if (meta.result_1.classOrderR2) setClassOrderR2(meta.result_1.classOrderR2)
+        if (meta.result_1.round2Active !== undefined) setRound2Active(meta.result_1.round2Active)
         // Compatibility for old metadata
         if (meta.result_1.classOrder && !meta.result_1.classOrderR1) {
           setClassOrderR1(meta.result_1.classOrder)
@@ -84,7 +86,8 @@ export default function AdminPage() {
         discipline: 'slalom',
         result_1: { 
           classOrderR1: round === 1 ? newOrder : classOrderR1, 
-          classOrderR2: round === 2 ? newOrder : classOrderR2 
+          classOrderR2: round === 2 ? newOrder : classOrderR2,
+          round2Active
         }
       })
 
@@ -97,6 +100,24 @@ export default function AdminPage() {
     } catch (err) {
       console.error(err)
     }
+  }
+
+  async function toggleRound2() {
+    const newState = !round2Active
+    setRound2Active(newState)
+    const { error } = await supabase.from('athletes').upsert({
+      id: '12345678-1234-1234-1234-1234567890ab',
+      name: '_metadata_',
+      class: '_metadata_',
+      discipline: 'slalom',
+      result_1: { 
+        classOrderR1, 
+        classOrderR2, 
+        round2Active: newState 
+      }
+    })
+    if (error) console.error(error)
+    fetchAthletes()
   }
 
   const handleLogin = (e: React.FormEvent) => {
@@ -186,6 +207,13 @@ export default function AdminPage() {
         <Link href="/" style={{ fontSize: '0.9rem', color: '#004a99', textDecoration: 'none', border: '1px solid #004a99', padding: '4px 8px', borderRadius: '4px' }}>Back to Leaderboard</Link>
       </div>
       <h1>Admin Dashboard</h1>
+
+      <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f0f0f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <span style={{ fontWeight: 'bold' }}>Round 2 Toggle: {round2Active ? 'ACTIVE' : 'HIDDEN'}</span>
+        <button onClick={toggleRound2} style={{ background: round2Active ? '#dc3545' : '#28a745', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '4px', cursor: 'pointer' }}>
+          {round2Active ? 'Disable Round 2' : 'Enable Round 2'}
+        </button>
+      </div>
       
       <section>
         <h2>Add Athlete</h2>
