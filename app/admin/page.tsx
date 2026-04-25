@@ -41,31 +41,48 @@ export default function AdminPage() {
   }
 
   async function moveClass(cls: string, direction: 'up' | 'down') {
-    const currentClasses = Array.from(new Set(athletes.map((a: any) => a.class)))
-    const fullOrder = [...classOrder]
-    // Ensure all current classes are in the order list
-    currentClasses.forEach(c => { if (!fullOrder.includes(c)) fullOrder.push(c) })
-    
-    const index = fullOrder.indexOf(cls)
-    if (index === -1) return
+    try {
+      const currentClasses = Array.from(new Set(athletes.map((a: any) => a.class)))
+      let fullOrder = [...classOrder]
+      
+      // Ensure all current classes are represented in the order
+      currentClasses.forEach(c => {
+        if (!fullOrder.includes(c)) fullOrder.push(c)
+      })
+      
+      const index = fullOrder.indexOf(cls)
+      if (index === -1) return
 
-    const newOrder = [...fullOrder]
-    if (direction === 'up' && index > 0) {
-      [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]]
-    } else if (direction === 'down' && index < newOrder.length - 1) {
-      [newOrder[index + 1], newOrder[index]] = [newOrder[index], newOrder[index + 1]]
-    } else {
-      return
+      const newOrder = [...fullOrder]
+      if (direction === 'up' && index > 0) {
+        [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]]
+      } else if (direction === 'down' && index < newOrder.length - 1) {
+        [newOrder[index + 1], newOrder[index]] = [newOrder[index], newOrder[index + 1]]
+      } else {
+        return // Already at the top/bottom
+      }
+
+      // Update local state immediately for snappy UI
+      setClassOrder(newOrder)
+
+      const { error } = await supabase.from('athletes').upsert({
+        id: '00000000-0000-0000-0000-000000000001', // Use a consistent non-nil UUID
+        name: '_metadata_',
+        class: '_metadata_',
+        discipline: 'slalom',
+        result_1: { classOrder: newOrder }
+      })
+
+      if (error) {
+        alert('Error saving new class order: ' + error.message)
+        fetchAthletes() // Revert to server state
+      } else {
+        fetchAthletes() // Final sync
+      }
+    } catch (err) {
+      console.error(err)
+      alert('An unexpected error occurred while moving class')
     }
-
-    setClassOrder(newOrder)
-    await supabase.from('athletes').upsert({
-      id: '00000000-0000-0000-0000-000000000000',
-      name: '_metadata_',
-      class: '_metadata_',
-      discipline: 'slalom',
-      result_1: { classOrder: newOrder }
-    })
   }
 
   const handleLogin = (e: React.FormEvent) => {
