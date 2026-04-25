@@ -12,7 +12,8 @@ export default function AdminPage() {
   const [password, setPassword] = useState('')
   const [athletes, setAthletes] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [classOrder, setClassOrder] = useState<string[]>([])
+  const [classOrderR1, setClassOrderR1] = useState<string[]>([])
+  const [classOrderR2, setClassOrderR2] = useState<string[]>([])
 
   // Form State
   const [name, setName] = useState('')
@@ -33,19 +34,27 @@ export default function AdminPage() {
       const meta = data?.find((a: any) => a.name === '_metadata_')
       const actualAthletes = data?.filter((a: any) => a.name !== '_metadata_') || []
       setAthletes(actualAthletes)
-      if (meta && meta.result_1?.classOrder) {
-        setClassOrder(meta.result_1.classOrder)
+      if (meta && meta.result_1) {
+        if (meta.result_1.classOrderR1) setClassOrderR1(meta.result_1.classOrderR1)
+        if (meta.result_1.classOrderR2) setClassOrderR2(meta.result_1.classOrderR2)
+        // Compatibility for old metadata
+        if (meta.result_1.classOrder && !meta.result_1.classOrderR1) {
+          setClassOrderR1(meta.result_1.classOrder)
+          setClassOrderR2(meta.result_1.classOrder)
+        }
       }
     }
     setLoading(false)
   }
 
-  async function moveClass(cls: string, direction: 'up' | 'down') {
+  async function moveClass(cls: string, direction: 'up' | 'down', round: number) {
     try {
       const distinctClasses = Array.from(new Set(athletes.map((a: any) => a.class)))
+      const currentOrder = round === 1 ? classOrderR1 : classOrderR2
+      
       const currentSortedClasses = [...distinctClasses].sort((a: any, b: any) => {
-        const idxA = classOrder.indexOf(a)
-        const idxB = classOrder.indexOf(b)
+        const idxA = currentOrder.indexOf(a)
+        const idxB = currentOrder.indexOf(b)
         if (idxA === -1 && idxB === -1) return a.localeCompare(b)
         if (idxA === -1) return 1
         if (idxB === -1) return -1
@@ -64,22 +73,26 @@ export default function AdminPage() {
         return // Already at the top/bottom
       }
 
-      // Update local state immediately for snappy UI
-      setClassOrder(newOrder)
+      // Update local state immediately
+      if (round === 1) setClassOrderR1(newOrder)
+      else setClassOrderR2(newOrder)
 
       const { error } = await supabase.from('athletes').upsert({
         id: '12345678-1234-1234-1234-1234567890ab',
         name: '_metadata_',
         class: '_metadata_',
         discipline: 'slalom',
-        result_1: { classOrder: newOrder }
+        result_1: { 
+          classOrderR1: round === 1 ? newOrder : classOrderR1, 
+          classOrderR2: round === 2 ? newOrder : classOrderR2 
+        }
       })
 
       if (error) {
         console.error('Error saving new class order:', error.message)
-        fetchAthletes() // Revert to server state
+        fetchAthletes()
       } else {
-        fetchAthletes() // Final sync
+        fetchAthletes()
       }
     } catch (err) {
       console.error(err)
@@ -193,58 +206,62 @@ export default function AdminPage() {
         <h2>Results Management</h2>
         {(() => {
           const distinctClasses = Array.from(new Set(athletes.map((a: any) => a.class)))
-          const sortedClasses = [...distinctClasses].sort((a: any, b: any) => {
-            const idxA = classOrder.indexOf(a)
-            const idxB = classOrder.indexOf(b)
-            if (idxA === -1 && idxB === -1) return a.localeCompare(b)
-            if (idxA === -1) return 1
-            if (idxB === -1) return -1
-            return idxA - idxB
-          })
+          
+          return [1, 2].map(round => {
+            const currentOrder = round === 1 ? classOrderR1 : classOrderR2
+            const sortedClasses = [...distinctClasses].sort((a: any, b: any) => {
+              const idxA = currentOrder.indexOf(a)
+              const idxB = currentOrder.indexOf(b)
+              if (idxA === -1 && idxB === -1) return a.localeCompare(b)
+              if (idxA === -1) return 1
+              if (idxB === -1) return -1
+              return idxA - idxB
+            })
 
-          return [1, 2].map(round => (
-            <div key={round} style={{ marginBottom: '4rem' }}>
-              <h2 style={{ background: '#004a99', color: '#fff', padding: '10px', borderRadius: '4px' }}>ROUND {round}</h2>
-              {sortedClasses.map((cls: any) => (
-                <div key={`${round}-${cls}`} style={{ marginBottom: '2rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', background: '#f4f4f4', padding: '10px', borderRadius: '4px' }}>
-                    <button type="button" onClick={() => moveClass(cls, 'up')} style={{ marginRight: '5px' }}>↑</button>
-                    <button type="button" onClick={() => moveClass(cls, 'down')} style={{ marginRight: '15px' }}>↓</button>
-                    <h3 style={{ margin: 0 }}>Class: {cls}</h3>
-                  </div>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Club</th>
-                        <th>Discipline</th>
-                        <th>Result (Round {round})</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {athletes.filter((a: any) => a.class === cls).map((a: any) => (
-                        <tr key={a.id}>
-                          <td>{a.name}</td>
-                          <td>{a.club}</td>
-                          <td>{a.discipline.toUpperCase()}</td>
-                          <td>{renderResultInput(a, round)}</td>
-                          <td>
-                            <button onClick={async () => {
-                              if (confirm('Delete?')) {
-                                await supabase.from('athletes').delete().eq('id', a.id)
-                                fetchAthletes()
-                              }
-                            }}>Delete</button>
-                          </td>
+            return (
+              <div key={round} style={{ marginBottom: '4rem' }}>
+                <h2 style={{ background: '#004a99', color: '#fff', padding: '10px', borderRadius: '4px' }}>ROUND {round}</h2>
+                {sortedClasses.map((cls: any) => (
+                  <div key={`${round}-${cls}`} style={{ marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', background: '#f4f4f4', padding: '10px', borderRadius: '4px' }}>
+                      <button type="button" onClick={() => moveClass(cls, 'up', round)} style={{ marginRight: '5px' }}>↑</button>
+                      <button type="button" onClick={() => moveClass(cls, 'down', round)} style={{ marginRight: '15px' }}>↓</button>
+                      <h3 style={{ margin: 0 }}>Class: {cls}</h3>
+                    </div>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Club</th>
+                          <th>Discipline</th>
+                          <th>Result (Round {round})</th>
+                          <th>Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
-            </div>
-          ))
+                      </thead>
+                      <tbody>
+                        {athletes.filter((a: any) => a.class === cls).map((a: any) => (
+                          <tr key={a.id}>
+                            <td>{a.name}</td>
+                            <td>{a.club}</td>
+                            <td>{a.discipline.toUpperCase()}</td>
+                            <td>{renderResultInput(a, round)}</td>
+                            <td>
+                              <button onClick={async () => {
+                                if (confirm('Delete?')) {
+                                  await supabase.from('athletes').delete().eq('id', a.id)
+                                  fetchAthletes()
+                                }
+                              }}>Delete</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            )
+          })
         })()}
       </section>
     </div>
