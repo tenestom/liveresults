@@ -10,7 +10,10 @@ export default function PublicPage() {
   const [loading, setLoading] = useState(true)
   const [classOrderR1, setClassOrderR1] = useState<string[]>([])
   const [classOrderR2, setClassOrderR2] = useState<string[]>([])
+  const [athleteOrderR1, setAthleteOrderR1] = useState<Record<string, string[]>>({})
+  const [athleteOrderR2, setAthleteOrderR2] = useState<Record<string, string[]>>({})
   const [round2Active, setRound2Active] = useState(false)
+  const [round2Mode, setRound2Mode] = useState<'manual' | 'automatic'>('automatic')
 
   useEffect(() => {
     fetchAthletes()
@@ -38,7 +41,11 @@ export default function PublicPage() {
       if (meta && meta.result_1) {
         if (meta.result_1.classOrderR1) setClassOrderR1(meta.result_1.classOrderR1)
         if (meta.result_1.classOrderR2) setClassOrderR2(meta.result_1.classOrderR2)
+        if (meta.result_1.athleteOrderR1) setAthleteOrderR1(meta.result_1.athleteOrderR1)
+        if (meta.result_1.athleteOrderR2) setAthleteOrderR2(meta.result_1.athleteOrderR2)
         if (meta.result_1.round2Active !== undefined) setRound2Active(meta.result_1.round2Active)
+        if (meta.result_1.round2Mode !== undefined) setRound2Mode(meta.result_1.round2Mode)
+        else setRound2Mode('automatic')
         // Compatibility for old metadata
         if (meta.result_1.classOrder && !meta.result_1.classOrderR1) {
           setClassOrderR1(meta.result_1.classOrder)
@@ -114,15 +121,29 @@ export default function PublicPage() {
                     {athletes
                       .filter((a: any) => a.class === cls)
                       .sort((a: any, b: any) => {
-                        if (round === 1) return 0 // Keep original order for round 1
-                        // Round 2: sort by round 1 result (best last)
-                        if (a.discipline !== b.discipline) return a.discipline.localeCompare(b.discipline)
-                        if (a.discipline === 'slalom') {
-                          return compareSlalom(b.result_1, a.result_1) // Reversed: best last
+                        if (round === 2 && round2Mode === 'automatic') {
+                          if (a.discipline !== b.discipline) return a.discipline.localeCompare(b.discipline)
+                          let diff = 0
+                          if (a.discipline === 'slalom') {
+                            diff = compareSlalom(b.result_1, a.result_1) // Reversed: best last
+                          } else {
+                            const valA = Number(a.result_1?.value || 0)
+                            const valB = Number(b.result_1?.value || 0)
+                            diff = valA - valB // Higher is better -> best last
+                          }
+                          if (diff !== 0) return diff
                         }
-                        const valA = Number(a.result_1?.value || 0)
-                        const valB = Number(b.result_1?.value || 0)
-                        return valA - valB // Higher is better -> best last
+
+                        const order = round === 1 ? athleteOrderR1[cls] : (athleteOrderR2[cls] || athleteOrderR1[cls]);
+                        if (order) {
+                          const idxA = order.indexOf(a.id);
+                          const idxB = order.indexOf(b.id);
+                          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                          if (idxA !== -1) return -1;
+                          if (idxB !== -1) return 1;
+                        }
+
+                        return 0;
                       })
                       .map((athlete: any) => {
                         const res = round === 1 ? athlete.result_1 : athlete.result_2

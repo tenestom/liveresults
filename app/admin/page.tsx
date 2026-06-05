@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Discipline, SlalomResult } from '@/lib/sorting'
+import { Discipline, SlalomResult, compareSlalom } from '@/lib/sorting'
 
 const ADMIN_PASSWORD = 'waterski2024'
 
@@ -14,13 +14,17 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [classOrderR1, setClassOrderR1] = useState<string[]>([])
   const [classOrderR2, setClassOrderR2] = useState<string[]>([])
+  const [athleteOrderR1, setAthleteOrderR1] = useState<Record<string, string[]>>({})
+  const [athleteOrderR2, setAthleteOrderR2] = useState<Record<string, string[]>>({})
   const [round2Active, setRound2Active] = useState(false)
+  const [round2Mode, setRound2Mode] = useState<'manual' | 'automatic'>('automatic')
 
   // Form State
   const [name, setName] = useState('')
   const [club, setClub] = useState('')
   const [athleteClass, setAthleteClass] = useState('')
   const [discipline, setDiscipline] = useState<Discipline>('jump')
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -38,7 +42,11 @@ export default function AdminPage() {
       if (meta && meta.result_1) {
         if (meta.result_1.classOrderR1) setClassOrderR1(meta.result_1.classOrderR1)
         if (meta.result_1.classOrderR2) setClassOrderR2(meta.result_1.classOrderR2)
+        if (meta.result_1.athleteOrderR1) setAthleteOrderR1(meta.result_1.athleteOrderR1)
+        if (meta.result_1.athleteOrderR2) setAthleteOrderR2(meta.result_1.athleteOrderR2)
         if (meta.result_1.round2Active !== undefined) setRound2Active(meta.result_1.round2Active)
+        if (meta.result_1.round2Mode !== undefined) setRound2Mode(meta.result_1.round2Mode)
+        else setRound2Mode('automatic')
         // Compatibility for old metadata
         if (meta.result_1.classOrder && !meta.result_1.classOrderR1) {
           setClassOrderR1(meta.result_1.classOrder)
@@ -87,7 +95,10 @@ export default function AdminPage() {
         result_1: { 
           classOrderR1: round === 1 ? newOrder : classOrderR1, 
           classOrderR2: round === 2 ? newOrder : classOrderR2,
-          round2Active
+          round2Active,
+          athleteOrderR1,
+          athleteOrderR2,
+          round2Mode
         }
       })
 
@@ -102,6 +113,27 @@ export default function AdminPage() {
     }
   }
 
+  async function toggleRound2Mode() {
+    const newMode = round2Mode === 'automatic' ? 'manual' : 'automatic'
+    setRound2Mode(newMode)
+    const { error } = await supabase.from('athletes').upsert({
+      id: '12345678-1234-1234-1234-1234567890ab',
+      name: '_metadata_',
+      class: '_metadata_',
+      discipline: 'slalom',
+      result_1: { 
+        classOrderR1, 
+        classOrderR2, 
+        round2Active,
+        athleteOrderR1,
+        athleteOrderR2,
+        round2Mode: newMode
+      }
+    })
+    if (error) console.error(error)
+    fetchAthletes()
+  }
+
   async function toggleRound2() {
     const newState = !round2Active
     setRound2Active(newState)
@@ -113,7 +145,88 @@ export default function AdminPage() {
       result_1: { 
         classOrderR1, 
         classOrderR2, 
-        round2Active: newState 
+        round2Active: newState,
+        athleteOrderR1,
+        athleteOrderR2,
+        round2Mode
+      }
+    })
+    if (error) console.error(error)
+    fetchAthletes()
+  }
+
+  async function moveAthlete(athleteId: string, cls: string, direction: 'up' | 'down', round: number) {
+    let currentMode = round2Mode
+    if (round === 2 && round2Mode === 'automatic') {
+      currentMode = 'manual'
+      setRound2Mode('manual')
+    }
+
+    const currentOrders = round === 1 ? { ...athleteOrderR1 } : { ...athleteOrderR2 }
+    
+    const actualClassAthletes = athletes.filter(a => a.class === cls)
+    let classOrder = currentOrders[cls]
+    if (!classOrder || (round === 2 && round2Mode === 'automatic')) {
+      actualClassAthletes.sort((a: any, b: any) => {
+        if (round === 2 && round2Mode === 'automatic') {
+           if (a.discipline !== b.discipline) return a.discipline.localeCompare(b.discipline)
+           let diff = 0
+           if (a.discipline === 'slalom') {
+             diff = compareSlalom(b.result_1, a.result_1)
+           } else {
+             const valA = Number(a.result_1?.value || 0)
+             const valB = Number(b.result_1?.value || 0)
+             diff = valA - valB
+           }
+           if (diff !== 0) return diff
+        }
+        const order = round === 1 ? athleteOrderR1[cls] : (athleteOrderR2[cls] || athleteOrderR1[cls]);
+        if (order) {
+          const idxA = order.indexOf(a.id);
+          const idxB = order.indexOf(b.id);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+        }
+        return 0;
+      })
+      classOrder = actualClassAthletes.map(a => a.id)
+    }
+
+    const existingIds = new Set(actualClassAthletes.map(a => a.id))
+    classOrder = classOrder.filter(id => existingIds.has(id))
+    actualClassAthletes.forEach(a => {
+      if (!classOrder!.includes(a.id)) classOrder!.push(a.id)
+    })
+
+    const index = classOrder.indexOf(athleteId)
+    if (index === -1) return
+
+    if (direction === 'up' && index > 0) {
+      [classOrder[index - 1], classOrder[index]] = [classOrder[index], classOrder[index - 1]]
+    } else if (direction === 'down' && index < classOrder.length - 1) {
+      [classOrder[index + 1], classOrder[index]] = [classOrder[index], classOrder[index + 1]]
+    } else {
+      return
+    }
+
+    currentOrders[cls] = classOrder
+
+    if (round === 1) setAthleteOrderR1(currentOrders)
+    else setAthleteOrderR2(currentOrders)
+
+    const { error } = await supabase.from('athletes').upsert({
+      id: '12345678-1234-1234-1234-1234567890ab',
+      name: '_metadata_',
+      class: '_metadata_',
+      discipline: 'slalom',
+      result_1: { 
+        classOrderR1, 
+        classOrderR2, 
+        round2Active,
+        athleteOrderR1: round === 1 ? currentOrders : athleteOrderR1,
+        athleteOrderR2: round === 2 ? currentOrders : athleteOrderR2,
+        round2Mode: currentMode
       }
     })
     if (error) console.error(error)
@@ -143,6 +256,38 @@ export default function AdminPage() {
       setAthleteClass('')
       fetchAthletes()
     }
+  }
+
+  async function updateAthleteDetails(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingId) return
+    const { error } = await supabase.from('athletes').update({ name, club, class: athleteClass, discipline }).eq('id', editingId)
+    if (error) {
+      console.error(error)
+      alert('Error updating athlete: ' + error.message)
+    } else {
+      setName('')
+      setClub('')
+      setAthleteClass('')
+      setEditingId(null)
+      fetchAthletes()
+    }
+  }
+
+  function cancelEdit() {
+    setName('')
+    setClub('')
+    setAthleteClass('')
+    setEditingId(null)
+  }
+
+  function startEdit(athlete: any) {
+    setEditingId(athlete.id)
+    setName(athlete.name)
+    setClub(athlete.club || '')
+    setAthleteClass(athlete.class)
+    setDiscipline(athlete.discipline)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   async function updateResult(id: string, round: number, discipline: Discipline, value: any) {
@@ -209,15 +354,22 @@ export default function AdminPage() {
       <h1>Admin Dashboard</h1>
 
       <div style={{ marginBottom: '2rem', padding: '1rem', background: '#f0f0f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontWeight: 'bold' }}>Round 2 Toggle: {round2Active ? 'ACTIVE' : 'HIDDEN'}</span>
-        <button onClick={toggleRound2} style={{ background: round2Active ? '#dc3545' : '#28a745', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '4px', cursor: 'pointer' }}>
-          {round2Active ? 'Disable Round 2' : 'Enable Round 2'}
-        </button>
+        <div>
+          <span style={{ fontWeight: 'bold', marginRight: '1rem' }}>Round 2 Toggle: {round2Active ? 'ACTIVE' : 'HIDDEN'}</span>
+          <button onClick={toggleRound2} style={{ background: round2Active ? '#dc3545' : '#28a745', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '2rem' }}>
+            {round2Active ? 'Disable Round 2' : 'Enable Round 2'}
+          </button>
+          
+          <span style={{ fontWeight: 'bold', marginRight: '1rem' }}>Round 2 Mode: {round2Mode.toUpperCase()}</span>
+          <button onClick={toggleRound2Mode} style={{ background: '#004a99', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}>
+            Switch to {round2Mode === 'automatic' ? 'Manual' : 'Automatic'}
+          </button>
+        </div>
       </div>
       
       <section>
-        <h2>Add Athlete</h2>
-        <form onSubmit={addAthlete}>
+        <h2>{editingId ? 'Edit Athlete' : 'Add Athlete'}</h2>
+        <form onSubmit={editingId ? updateAthleteDetails : addAthlete}>
           <input value={name} onChange={e => setName(e.target.value)} placeholder="Name" required />
           <input value={club} onChange={e => setClub(e.target.value)} placeholder="Club" />
           <input value={athleteClass} onChange={e => setAthleteClass(e.target.value)} placeholder="Class (e.g. U17, Open)" required />
@@ -226,7 +378,8 @@ export default function AdminPage() {
             <option value="trick">Trick</option>
             <option value="slalom">Slalom</option>
           </select>
-          <button type="submit">Add</button>
+          <button type="submit">{editingId ? 'Update' : 'Add'}</button>
+          {editingId && <button type="button" onClick={cancelEdit} style={{ marginLeft: '10px', background: '#ccc', color: '#000' }}>Cancel</button>}
         </form>
       </section>
 
@@ -267,13 +420,46 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {athletes.filter((a: any) => a.class === cls).map((a: any) => (
+                        {athletes
+                          .filter((a: any) => a.class === cls)
+                          .sort((a: any, b: any) => {
+                            if (round === 2 && round2Mode === 'automatic') {
+                              if (a.discipline !== b.discipline) return a.discipline.localeCompare(b.discipline)
+                              let diff = 0
+                              if (a.discipline === 'slalom') {
+                                diff = compareSlalom(b.result_1, a.result_1) // Reversed: best last
+                              } else {
+                                const valA = Number(a.result_1?.value || 0)
+                                const valB = Number(b.result_1?.value || 0)
+                                diff = valA - valB // Higher is better -> best last
+                              }
+                              if (diff !== 0) return diff
+                            }
+
+                            const order = round === 1 ? athleteOrderR1[cls] : (athleteOrderR2[cls] || athleteOrderR1[cls]);
+                            if (order) {
+                              const idxA = order.indexOf(a.id);
+                              const idxB = order.indexOf(b.id);
+                              if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                              if (idxA !== -1) return -1;
+                              if (idxB !== -1) return 1;
+                            }
+                            return 0;
+                          })
+                          .map((a: any) => (
                           <tr key={a.id}>
-                            <td>{a.name}</td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <button type="button" onClick={() => moveAthlete(a.id, cls, 'up', round)} style={{ marginRight: '5px', padding: '0 4px' }}>↑</button>
+                                <button type="button" onClick={() => moveAthlete(a.id, cls, 'down', round)} style={{ marginRight: '8px', padding: '0 4px' }}>↓</button>
+                                {a.name}
+                              </div>
+                            </td>
                             <td>{a.club}</td>
                             <td>{a.discipline.toUpperCase()}</td>
                             <td>{renderResultInput(a, round)}</td>
                             <td>
+                              <button onClick={() => startEdit(a)} style={{ marginRight: '5px' }}>Edit</button>
                               <button onClick={async () => {
                                 if (confirm('Delete?')) {
                                   await supabase.from('athletes').delete().eq('id', a.id)
